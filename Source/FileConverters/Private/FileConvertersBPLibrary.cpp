@@ -5,6 +5,8 @@
 
 // UE Includes.
 #include "Kismet/KismetStringLibrary.h"
+#include "Builders/GLTFBuilder.h"
+#include "UserData/GLTFMaterialUserData.h"
 
 UFileConvertersBPLibrary::UFileConvertersBPLibrary(const FObjectInitializer& ObjectInitializer)
 : Super(ObjectInitializer)
@@ -52,4 +54,69 @@ FString UFileConvertersBPLibrary::CreatePDFViewer(const FString In_HTML_Content,
     HTML_Content.ReplaceInline(*DummyText, *PDF_Base64, ESearchCase::CaseSensitive);
 
     return HTML_Content;
+}
+
+void UFileConvertersBPLibrary::ExportLevelGLTF(bool bEnableQuantization, bool bResetLocation, bool bResetRotation, bool bResetScale, const FString ExportPath, TSet<AActor*> TargetActors, FDelegateGLTFExport DelegateGLTFExport)
+{
+    AsyncTask(ENamedThreads::AnyNormalThreadNormalTask, [DelegateGLTFExport, bEnableQuantization, bResetLocation, bResetRotation, bResetScale, ExportPath, TargetActors]()
+        {
+            TArray<FVector> Array_Locations;
+            TArray<FRotator> Array_Rotations;
+            TArray<FVector> Array_Scales;
+
+            for (int32 ActorIndex = 0; ActorIndex < TargetActors.Num(); ActorIndex++)
+            {
+                if (bResetLocation == true)
+                {
+                    Array_Locations.Add(TargetActors.Array()[ActorIndex]->GetRootComponent()->GetComponentLocation());
+                    TargetActors.Array()[ActorIndex]->GetRootComponent()->SetWorldLocation(FVector(0.0f), false, nullptr, ETeleportType::None);
+                }
+
+                if (bResetRotation == true)
+                {
+                    Array_Rotations.Add(TargetActors.Array()[ActorIndex]->GetRootComponent()->GetComponentRotation());
+                    TargetActors.Array()[ActorIndex]->GetRootComponent()->SetWorldRotation(FQuat(0.0f), false, nullptr, ETeleportType::None);
+                }
+
+                if (bResetScale == true)
+                {
+                    Array_Scales.Add(TargetActors.Array()[ActorIndex]->GetRootComponent()->GetComponentScale());
+                    TargetActors.Array()[ActorIndex]->GetRootComponent()->SetWorldScale3D(FVector(1.0f));
+                }
+            }
+
+            AsyncTask(ENamedThreads::GameThread, [DelegateGLTFExport, bEnableQuantization, bResetLocation, bResetRotation, bResetScale, Array_Locations, Array_Rotations, Array_Scales, ExportPath, TargetActors]()
+                {
+                    UGLTFExportOptions* ExportOptions = NewObject<UGLTFExportOptions>();
+                    ExportOptions->ResetToDefault();
+                    ExportOptions->bExportProxyMaterials = true;
+                    ExportOptions->bExportVertexColors = true;
+                    ExportOptions->bUseMeshQuantization = bEnableQuantization;
+
+                    FGLTFExportMessages ExportMessages;
+                    bool bIsExportSuccessful = UGLTFExporter::ExportToGLTF(GEngine->GetCurrentPlayWorld(), ExportPath, ExportOptions, TargetActors, ExportMessages);
+
+                    for (int32 ActorIndex = 0; ActorIndex < TargetActors.Num(); ActorIndex++)
+                    {
+                        if (bResetLocation == true)
+                        {
+                            TargetActors.Array()[ActorIndex]->GetRootComponent()->SetWorldLocation(Array_Locations[ActorIndex], false, nullptr, ETeleportType::None);
+                        }
+
+                        if (bResetRotation == true)
+                        {
+                            TargetActors.Array()[ActorIndex]->GetRootComponent()->SetWorldRotation(Array_Rotations[ActorIndex], false, nullptr, ETeleportType::None);
+                        }
+
+                        if (bResetScale == true)
+                        {
+                            TargetActors.Array()[ActorIndex]->GetRootComponent()->SetWorldScale3D(Array_Scales[ActorIndex]);
+                        }
+                    }
+
+                    DelegateGLTFExport.ExecuteIfBound(bIsExportSuccessful, ExportMessages);
+                }
+            );
+        }
+    );
 }

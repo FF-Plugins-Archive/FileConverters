@@ -38,6 +38,7 @@ public class FileConverters : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
+				"GLTFExporter"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

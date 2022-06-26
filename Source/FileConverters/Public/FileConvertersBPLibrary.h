@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "Exporters/GLTFExporter.h"
 #include "FileConvertersBPLibrary.generated.h"
 
 /* 
@@ -22,6 +23,10 @@
 *	For more info on custom blueprint nodes visit documentation:
 *	https://wiki.unrealengine.com/Custom_Blueprint_Node_Creation
 */
+
+UDELEGATE(BlueprintAuthorityOnly)
+DECLARE_DYNAMIC_DELEGATE_TwoParams(FDelegateGLTFExport, bool, bIsSuccessfull, FGLTFExportMessages, OutMessages);
+
 UCLASS()
 class UFileConvertersBPLibrary : public UBlueprintFunctionLibrary
 {
@@ -38,5 +43,8 @@ class UFileConvertersBPLibrary : public UBlueprintFunctionLibrary
 
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Create PDF Viewer", ToolTip = "Default DummyText is ff_base64. If you use path for PDFs, you should attach an MakeArray node to In PDF Bytes. Because that input requires an attachment and it is about unreal blueprint limitations.", Keywords = "create, view, show, pdf, pdfjs, viewer"), Category = "File Converters|HTML")
 	static FString CreatePDFViewer(const FString In_HTML_Content, const FString In_PDF_Path, TArray<uint8> In_PDF_Bytes, const FString DummyText, bool bUseBytes);
+
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Export Level As GLTF", ToolTip = "Description.", Keywords = "level, export, gltf, glb"), Category = "File Converters|GLTF")
+	static void ExportLevelGLTF(bool bEnableQuantization, bool bResetLocation, bool bResetRotation, bool bResetScale, const FString ExportPath, TSet<AActor*> TargetActors, FDelegateGLTFExport DelegateGLTFExport);
 
 };
