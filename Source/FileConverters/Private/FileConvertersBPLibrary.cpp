@@ -8,6 +8,10 @@
 #include "Builders/GLTFBuilder.h"
 #include "UserData/GLTFMaterialUserData.h"
 
+// Windows Includes.
+#define WIN32_LEAN_AND_MEAN
+#include "shobjidl_core.h"
+
 UFileConvertersBPLibrary::UFileConvertersBPLibrary(const FObjectInitializer& ObjectInitializer)
 : Super(ObjectInitializer)
 {
@@ -119,4 +123,29 @@ void UFileConvertersBPLibrary::ExportLevelGLTF(bool bEnableQuantization, bool bR
             );
         }
     );
+}
+
+void UFileConvertersBPLibrary::SelectFileFromDialog()
+{
+    AsyncTask(ENamedThreads::AnyNormalThreadNormalTask, []()
+        {
+            IFileOpenDialog* FileOpenDialog;
+            HRESULT FileDialogInstance = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&FileOpenDialog));
+
+            if (SUCCEEDED(FileDialogInstance))
+            {
+                PWSTR pszFilePath = NULL;
+
+                HWND WindowHandle = reinterpret_cast<HWND>(GEngine->GameViewport->GetWindow()->GetNativeWindow()->GetOSWindowHandle());
+                FileOpenDialog->Show(WindowHandle);
+            }
+
+            AsyncTask(ENamedThreads::GameThread,[]()
+                {
+
+                }
+            );
+        }
+    );
+   
 }
