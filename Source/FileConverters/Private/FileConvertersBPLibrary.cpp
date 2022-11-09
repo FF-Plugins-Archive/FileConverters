@@ -4,9 +4,10 @@
 #include "FileConverters.h"
 
 // UE Includes.
-#include "Kismet/KismetStringLibrary.h"
 #include "Builders/GLTFBuilder.h"
 #include "UserData/GLTFMaterialUserData.h"
+#include "GenericPlatform/GenericPlatformMisc.h"
+//#include "Kismet/KismetStringLibrary.h"
 
 // Windows Includes.
 #define WIN32_LEAN_AND_MEAN
@@ -125,27 +126,184 @@ void UFileConvertersBPLibrary::ExportLevelGLTF(bool bEnableQuantization, bool bR
     );
 }
 
-void UFileConvertersBPLibrary::SelectFileFromDialog()
+void UFileConvertersBPLibrary::SelectFileFromDialog(FDelegateOpenFile DelegateFileNames, const FString InDialogName, const FString InOkLabel, const FString InDefaultPath, TMap<FString, FString> InExtensions, int32 DefaultExtensionIndex, bool IsNormalizeOutputs)
 {
-    AsyncTask(ENamedThreads::AnyNormalThreadNormalTask, []()
+    AsyncTask(ENamedThreads::AnyNormalThreadNormalTask, [DelegateFileNames, InDialogName, InOkLabel, InDefaultPath, InExtensions, DefaultExtensionIndex, IsNormalizeOutputs]()
         {
             IFileOpenDialog* FileOpenDialog;
             HRESULT FileDialogInstance = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&FileOpenDialog));
 
+            IShellItemArray* ShellItems;
+            TArray<FString> Array_FilePaths;
+
+            // If dialog instance successfully created.
             if (SUCCEEDED(FileDialogInstance))
             {
-                PWSTR pszFilePath = NULL;
+                // https://stackoverflow.com/questions/70174174/c-com-comdlg-filterspec-array-overrun
+                int32 ExtensionCount = InExtensions.Num();
+                COMDLG_FILTERSPEC* ExtensionArray = new COMDLG_FILTERSPEC[ExtensionCount];
+                COMDLG_FILTERSPEC* EachExtension = ExtensionArray;
 
+                TArray<FString> ExtensionKeys;
+                InExtensions.GetKeys(ExtensionKeys);
+
+                TArray<FString> ExtensionValues;
+                InExtensions.GenerateValueArray(ExtensionValues);
+                
+                for (int32 ExtensionIndex = 0; ExtensionIndex < ExtensionCount; ExtensionIndex++)
+                {
+                    EachExtension->pszName = *ExtensionKeys[ExtensionIndex];
+                    EachExtension->pszSpec = *ExtensionValues[ExtensionIndex];
+                    ++EachExtension;
+                }
+
+                FileOpenDialog->SetFileTypes(ExtensionCount, ExtensionArray);
+                
+                // Starts from 1
+                FileOpenDialog->SetFileTypeIndex(DefaultExtensionIndex+1);
+                
+                DWORD dwOptions;
+                FileOpenDialog->GetOptions(&dwOptions);
+                
+                // https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/ne-shobjidl_core-_fileopendialogoptions
+                FileOpenDialog->SetOptions(dwOptions | FOS_ALLOWMULTISELECT | FOS_FILEMUSTEXIST | FOS_OKBUTTONNEEDSINTERACTION);
+               
+                if (InDialogName.IsEmpty() != true)
+                {
+                    FileOpenDialog->SetTitle(*InDialogName);
+                }
+
+                if (InOkLabel.IsEmpty() != true)
+                {
+                    FileOpenDialog->SetOkButtonLabel(*InOkLabel);
+                }
+
+                if (InDefaultPath.IsEmpty() != true)
+                {
+                    FString DefaultPathString = InDefaultPath;
+
+                    FPaths::MakePlatformFilename(DefaultPathString);
+
+                    IShellItem* DefaultFolder = NULL;
+                    HRESULT DefaultPathResult = SHCreateItemFromParsingName(*DefaultPathString, nullptr, IID_PPV_ARGS(&DefaultFolder));
+                    
+                    if (SUCCEEDED(DefaultPathResult))
+                    {
+                        FileOpenDialog->SetFolder(DefaultFolder);
+                        DefaultFolder->Release();
+                    }
+                }
+     
                 HWND WindowHandle = reinterpret_cast<HWND>(GEngine->GameViewport->GetWindow()->GetNativeWindow()->GetOSWindowHandle());
-                FileOpenDialog->Show(WindowHandle);
+                FileDialogInstance = FileOpenDialog->Show(WindowHandle);
+                
+                // If dialog successfully showed up.
+                if (SUCCEEDED(FileDialogInstance))
+                {
+                    FileDialogInstance = FileOpenDialog->GetResults(&ShellItems);
+
+                    // Is results got.
+                    if (SUCCEEDED(FileDialogInstance))
+                    {
+                        DWORD ItemCount;
+                        ShellItems->GetCount(&ItemCount);
+
+                        for (DWORD ItemIndex = 0; ItemIndex < ItemCount; ItemIndex++)
+                        {
+                            IShellItem* EachItem;
+                            ShellItems->GetItemAt(ItemIndex, &EachItem);
+
+                            PWSTR EachFilePathSTR = NULL;
+                            EachItem->GetDisplayName(SIGDN_FILESYSPATH, &EachFilePathSTR);
+                            
+                            FString EachFilePath = EachFilePathSTR;
+                            
+                            if (IsNormalizeOutputs == true)
+                            {
+                                FPaths::NormalizeFilename(EachFilePath);
+                            }
+
+                            Array_FilePaths.Add(EachFilePath);
+
+                            EachItem->Release();
+                        }
+
+                        ShellItems->Release();
+                        FileOpenDialog->Release();
+                        CoUninitialize();
+
+                        AsyncTask(ENamedThreads::GameThread, [Array_FilePaths, DelegateFileNames]()
+                            {
+                                if (Array_FilePaths.IsEmpty() == false)
+                                {
+                                    FSelectedFiles SelectedFiles;
+                                    SelectedFiles.IsSuccessfull = true;
+                                    SelectedFiles.Strings = Array_FilePaths;
+
+                                    DelegateFileNames.ExecuteIfBound(SelectedFiles);
+                                }
+
+                                else
+                                {
+                                    FSelectedFiles SelectedFiles;
+                                    SelectedFiles.IsSuccessfull = false;
+
+                                    DelegateFileNames.ExecuteIfBound(SelectedFiles);
+                                }
+                            }
+                        );
+
+                    }
+
+                    // Function couldn't get results.
+                    else
+                    {
+                        AsyncTask(ENamedThreads::GameThread, [DelegateFileNames, ShellItems, FileOpenDialog]()
+                            {
+                                FileOpenDialog->Release();
+                                CoUninitialize();
+                                
+                                FSelectedFiles SelectedFiles;
+                                SelectedFiles.IsSuccessfull = false;
+
+                                DelegateFileNames.ExecuteIfBound(SelectedFiles);
+                            }
+                        );
+                    }
+                }
+                
+                // Dialog didn't show up.
+                else
+                {
+                    AsyncTask(ENamedThreads::GameThread, [DelegateFileNames, FileOpenDialog, ShellItems]()
+                        {
+                            FileOpenDialog->Release();
+                            CoUninitialize();
+                            
+                            FSelectedFiles SelectedFiles;
+                            SelectedFiles.IsSuccessfull = false;
+
+                            DelegateFileNames.ExecuteIfBound(SelectedFiles);
+                        }
+                    );
+                }
             }
 
-            AsyncTask(ENamedThreads::GameThread,[]()
-                {
+            // Function couldn't create dialog.
+            else
+            {
+                AsyncTask(ENamedThreads::GameThread, [DelegateFileNames, FileOpenDialog, ShellItems]()
+                    {
+                        FileOpenDialog->Release();
+                        CoUninitialize();
+                        
+                        FSelectedFiles SelectedFiles;
+                        SelectedFiles.IsSuccessfull = false;
 
-                }
-            );
+                        DelegateFileNames.ExecuteIfBound(SelectedFiles);
+                    }
+                );
+            }
         }
     );
-   
 }

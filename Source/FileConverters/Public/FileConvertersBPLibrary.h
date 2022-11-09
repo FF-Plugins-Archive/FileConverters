@@ -24,8 +24,25 @@
 *	https://wiki.unrealengine.com/Custom_Blueprint_Node_Creation
 */
 
+USTRUCT(BlueprintType)
+struct FSelectedFiles
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(BlueprintReadOnly)
+	bool IsSuccessfull = false;
+
+	UPROPERTY(BlueprintReadOnly)
+	TArray<FString> Strings;
+};
+
 UDELEGATE(BlueprintAuthorityOnly)
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FDelegateGLTFExport, bool, bIsSuccessfull, FGLTFExportMessages, OutMessages);
+
+UDELEGATE(BlueprintAuthorityOnly)
+DECLARE_DYNAMIC_DELEGATE_OneParam(FDelegateOpenFile, FSelectedFiles, OutFileNames);
 
 UCLASS()
 class UFileConvertersBPLibrary : public UBlueprintFunctionLibrary
@@ -48,6 +65,6 @@ class UFileConvertersBPLibrary : public UBlueprintFunctionLibrary
 	static void ExportLevelGLTF(bool bEnableQuantization, bool bResetLocation, bool bResetRotation, bool bResetScale, const FString ExportPath, TSet<AActor*> TargetActors, FDelegateGLTFExport DelegateGLTFExport);
 
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Select File From Dialog", ToolTip = "Description.", Keywords = "select, file, dialog, windows, explorer"), Category = "File Converters|File Dialog")
-	static void SelectFileFromDialog();
+	static void SelectFileFromDialog(FDelegateOpenFile DelegateFileNames, const FString InDialogName, const FString InOkLabel, const FString InDefaultPath, TMap<FString, FString> InExtensions, int32 DefaultExtensionIndex, bool IsNormalizeOutputs = true);
 
 };
