@@ -20,3 +20,6 @@ Features:
 	- You can change dialog title
 	- You can change "Ok" button title
 - Some other functions (CMD CLI helpers) for in-house usages.
+
+You can find sample nodes and their usages in Plugins/FileConverters Content/BPs/BP_Template_FileConverters
+You need to open Plugins folder from "Content Browser" settings at the bottom of editor.
