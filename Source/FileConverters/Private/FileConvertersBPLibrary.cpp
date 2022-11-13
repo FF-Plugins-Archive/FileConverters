@@ -131,7 +131,7 @@ void UFileConvertersBPLibrary::SelectFileFromDialog(FDelegateOpenFile DelegateFi
     AsyncTask(ENamedThreads::AnyNormalThreadNormalTask, [DelegateFileNames, InDialogName, InOkLabel, InDefaultPath, InExtensions, DefaultExtensionIndex, bIsNormalizeOutputs, bAllowFolderSelection]()
         {
             IFileOpenDialog* FileOpenDialog;
-            HRESULT FileDialogInstance = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&FileOpenDialog));
+            HRESULT FileDialogInstance = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL, IID_PPV_ARGS(&FileOpenDialog));
 
             IShellItemArray* ShellItems;
             TArray<FString> Array_FilePaths;
@@ -310,6 +310,124 @@ void UFileConvertersBPLibrary::SelectFileFromDialog(FDelegateOpenFile DelegateFi
                         SelectedFiles.IsSuccessfull = false;
 
                         DelegateFileNames.ExecuteIfBound(SelectedFiles);
+                    }
+                );
+            }
+        }
+    );
+}
+
+void UFileConvertersBPLibrary::SaveFileDialog(FDelegateSaveFile DelegateSaveFile, const FString InDialogName, const FString InOkLabel, const FString InDefaultPath, TMap<FString, FString> InExtensions, int32 DefaultExtensionIndex, bool bIsNormalizeOutputs)
+{
+    AsyncTask(ENamedThreads::AnyNormalThreadNormalTask, [DelegateSaveFile, InDialogName, InOkLabel, InDefaultPath, InExtensions, DefaultExtensionIndex, bIsNormalizeOutputs]()
+        {
+            IFileSaveDialog* SaveFileDialog;
+            HRESULT SaveDialogInstance = CoCreateInstance(CLSID_FileSaveDialog, NULL, CLSCTX_ALL, IID_PPV_ARGS(&SaveFileDialog));
+
+            IShellItem* ShellItem;
+
+            // If dialog instance successfully created.
+            if (SUCCEEDED(SaveDialogInstance))
+            {
+                // https://stackoverflow.com/questions/70174174/c-com-comdlg-filterspec-array-overrun
+                int32 ExtensionCount = InExtensions.Num();
+                COMDLG_FILTERSPEC* ExtensionArray = new COMDLG_FILTERSPEC[ExtensionCount];
+                COMDLG_FILTERSPEC* EachExtension = ExtensionArray;
+
+                TArray<FString> ExtensionKeys;
+                InExtensions.GetKeys(ExtensionKeys);
+
+                TArray<FString> ExtensionValues;
+                InExtensions.GenerateValueArray(ExtensionValues);
+
+                for (int32 ExtensionIndex = 0; ExtensionIndex < ExtensionCount; ExtensionIndex++)
+                {
+                    EachExtension->pszName = *ExtensionKeys[ExtensionIndex];
+                    EachExtension->pszSpec = *ExtensionValues[ExtensionIndex];
+                    ++EachExtension;
+                }
+               
+                SaveFileDialog->SetFileTypes(ExtensionCount, ExtensionArray);
+
+                // Starts from 1
+                SaveFileDialog->SetFileTypeIndex(DefaultExtensionIndex + 1);
+
+                DWORD dwOptions;
+                SaveFileDialog->GetOptions(&dwOptions);
+
+                if (InDialogName.IsEmpty() != true)
+                {
+                    SaveFileDialog->SetTitle(*InDialogName);
+                }
+
+                if (InOkLabel.IsEmpty() != true)
+                {
+                    SaveFileDialog->SetOkButtonLabel(*InOkLabel);
+                }
+
+                if (InDefaultPath.IsEmpty() != true)
+                {
+                    FString DefaultPathString = InDefaultPath;
+
+                    FPaths::MakePlatformFilename(DefaultPathString);
+
+                    IShellItem* DefaultFolder = NULL;
+                    HRESULT DefaultPathResult = SHCreateItemFromParsingName(*DefaultPathString, nullptr, IID_PPV_ARGS(&DefaultFolder));
+
+                    if (SUCCEEDED(DefaultPathResult))
+                    {
+                        SaveFileDialog->SetFolder(DefaultFolder);
+                        DefaultFolder->Release();
+                    }
+                }
+
+                HWND WindowHandle = reinterpret_cast<HWND>(GEngine->GameViewport->GetWindow()->GetNativeWindow()->GetOSWindowHandle());
+                SaveDialogInstance = SaveFileDialog->Show(WindowHandle);
+
+                // Dialog didn't show up.
+                if (SUCCEEDED(SaveDialogInstance))
+                {
+                    SaveFileDialog->GetResult(&ShellItem);
+                    
+                    UINT FileTypeIndex = 0;
+                    SaveFileDialog->GetFileTypeIndex(&FileTypeIndex);
+                    FString ExtensionString = ExtensionValues[FileTypeIndex - 1];
+                    
+                    TArray<FString> ExtensionParts;
+                    ExtensionString.ParseIntoArray(ExtensionParts, TEXT("."), true);
+
+                    PWSTR pFileName;
+                    ShellItem->GetDisplayName(SIGDN_FILESYSPATH, &pFileName);
+
+                    FString FilePath = FString(pFileName) + TEXT(".") + ExtensionParts[1];
+
+                    ShellItem->Release();
+                    SaveFileDialog->Release();
+                    CoUninitialize();
+
+                    AsyncTask(ENamedThreads::GameThread, [DelegateSaveFile, FilePath]()
+                        {
+                            DelegateSaveFile.ExecuteIfBound(true, FilePath);
+                        }
+                    );
+                }
+
+                else
+                {
+                    AsyncTask(ENamedThreads::GameThread, [DelegateSaveFile]()
+                        {
+                            DelegateSaveFile.ExecuteIfBound(false, TEXT(""));
+                        }
+                    );
+                }
+            }
+
+            // Function couldn't create dialog.
+            else
+            {
+                AsyncTask(ENamedThreads::GameThread, [DelegateSaveFile]()
+                    {
+                        DelegateSaveFile.ExecuteIfBound(false, TEXT(""));
                     }
                 );
             }
