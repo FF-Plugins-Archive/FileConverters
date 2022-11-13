@@ -401,6 +401,11 @@ void UFileConvertersBPLibrary::SaveFileDialog(FDelegateSaveFile DelegateSaveFile
 
                     FString FilePath = FString(pFileName) + TEXT(".") + ExtensionParts[1];
 
+                    if (bIsNormalizeOutputs == true)
+                    {
+                        FPaths::NormalizeFilename(FilePath);
+                    }
+
                     ShellItem->Release();
                     SaveFileDialog->Release();
                     CoUninitialize();
