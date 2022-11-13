@@ -126,9 +126,9 @@ void UFileConvertersBPLibrary::ExportLevelGLTF(bool bEnableQuantization, bool bR
     );
 }
 
-void UFileConvertersBPLibrary::SelectFileFromDialog(FDelegateOpenFile DelegateFileNames, const FString InDialogName, const FString InOkLabel, const FString InDefaultPath, TMap<FString, FString> InExtensions, int32 DefaultExtensionIndex, bool IsNormalizeOutputs)
+void UFileConvertersBPLibrary::SelectFileFromDialog(FDelegateOpenFile DelegateFileNames, const FString InDialogName, const FString InOkLabel, const FString InDefaultPath, TMap<FString, FString> InExtensions, int32 DefaultExtensionIndex, bool bIsNormalizeOutputs, bool bAllowFolderSelection)
 {
-    AsyncTask(ENamedThreads::AnyNormalThreadNormalTask, [DelegateFileNames, InDialogName, InOkLabel, InDefaultPath, InExtensions, DefaultExtensionIndex, IsNormalizeOutputs]()
+    AsyncTask(ENamedThreads::AnyNormalThreadNormalTask, [DelegateFileNames, InDialogName, InOkLabel, InDefaultPath, InExtensions, DefaultExtensionIndex, bIsNormalizeOutputs, bAllowFolderSelection]()
         {
             IFileOpenDialog* FileOpenDialog;
             HRESULT FileDialogInstance = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&FileOpenDialog));
@@ -165,8 +165,17 @@ void UFileConvertersBPLibrary::SelectFileFromDialog(FDelegateOpenFile DelegateFi
                 DWORD dwOptions;
                 FileOpenDialog->GetOptions(&dwOptions);
                 
-                // https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/ne-shobjidl_core-_fileopendialogoptions
-                FileOpenDialog->SetOptions(dwOptions | FOS_ALLOWMULTISELECT | FOS_FILEMUSTEXIST | FOS_OKBUTTONNEEDSINTERACTION);
+                if (bAllowFolderSelection == true)
+                {   
+                    // https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/ne-shobjidl_core-_fileopendialogoptions
+                    FileOpenDialog->SetOptions(dwOptions | FOS_PICKFOLDERS | FOS_ALLOWMULTISELECT | FOS_FILEMUSTEXIST | FOS_OKBUTTONNEEDSINTERACTION);
+                }
+
+                else
+                {
+                    // https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/ne-shobjidl_core-_fileopendialogoptions
+                    FileOpenDialog->SetOptions(dwOptions | FOS_ALLOWMULTISELECT | FOS_FILEMUSTEXIST | FOS_OKBUTTONNEEDSINTERACTION);
+                }
                
                 if (InDialogName.IsEmpty() != true)
                 {
@@ -218,7 +227,7 @@ void UFileConvertersBPLibrary::SelectFileFromDialog(FDelegateOpenFile DelegateFi
                             
                             FString EachFilePath = EachFilePathSTR;
                             
-                            if (IsNormalizeOutputs == true)
+                            if (bIsNormalizeOutputs == true)
                             {
                                 FPaths::NormalizeFilename(EachFilePath);
                             }
