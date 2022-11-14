@@ -24,7 +24,7 @@ Features:
 You can find sample nodes and their usages in Plugins/FileConverters Content/BPs/BP_Template_FileConverters
 You need to open Plugins folder from "Content Browser" settings at the bottom of editor.
 
-*USER THIS IS NOT A RUNTIME IMPORT LIBRARY ! THIS ONLY GIVES SELECTED FILE'S OR FOLDER'S PATH !
+*THIS IS NOT A RUNTIME IMPORT LIBRARY ! THIS ONLY GIVES SELECTED FILE'S OR FOLDER'S PATH !
 *WE HAVE NECESSARY LIBRARIES TO IMPORT CAD FILES, SO WE USED THE IN OUR SAMPLE.
 *YOU NEED TO CREATE YOUR OWN MECHANICS TO USE (IMPORT) THAT FILES !
 
