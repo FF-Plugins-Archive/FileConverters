@@ -23,3 +23,9 @@ Features:
 
 You can find sample nodes and their usages in Plugins/FileConverters Content/BPs/BP_Template_FileConverters
 You need to open Plugins folder from "Content Browser" settings at the bottom of editor.
+
+File Selection Sample Blueprint
+![FileSelection](https://user-images.githubusercontent.com/10528447/201652963-b730b091-3be8-47e6-a534-33eb607d8880.jpg)
+
+Save Dialog Sample Blueprint
+![SaveDialog](https://user-images.githubusercontent.com/10528447/201652972-f93f7351-f665-4f24-ab5a-7e75b249dd22.jpg)
