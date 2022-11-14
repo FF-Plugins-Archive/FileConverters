@@ -26,7 +26,7 @@ You can find sample nodes and their usages in Plugins/FileConverters Content/BPs
 You need to open Plugins folder from "Content Browser" settings at the bottom of editor.<br>
 You can use both normalized and platform paths on "In Default Path" inputs. System converts it to platform path (Windows) itself.<br>
 Normalized paths use "/" as delimeter.<br>
-Windows Platform uses "\" as delimeter.<br>
+Windows Platform uses "\\" as delimeter.<br>
 
 WARNING:<br>
 THIS IS NOT A RUNTIME IMPORT LIBRARY ! THIS ONLY GIVES SELECTED FILE'S OR FOLDER'S PATH !<br>
