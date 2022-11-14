@@ -21,12 +21,17 @@ Features:
 	- You can change "Ok" button title
 - Some other functions (CMD CLI helpers) for in-house usages.
 
+HINTS:
 You can find sample nodes and their usages in Plugins/FileConverters Content/BPs/BP_Template_FileConverters
 You need to open Plugins folder from "Content Browser" settings at the bottom of editor.
+You can use both normalized and platform paths on "In Default Path" inputs. System converts it to platform path (Windows) itself.
+Normalized paths use "/" as delimeter.
+Windows Platform uses "\" as delimeter.
 
-*THIS IS NOT A RUNTIME IMPORT LIBRARY ! THIS ONLY GIVES SELECTED FILE'S OR FOLDER'S PATH !
-*WE HAVE NECESSARY LIBRARIES TO IMPORT CAD FILES, SO WE USED THE IN OUR SAMPLE.
-*YOU NEED TO CREATE YOUR OWN MECHANICS TO USE (IMPORT) THAT FILES !
+WARNING:
+THIS IS NOT A RUNTIME IMPORT LIBRARY ! THIS ONLY GIVES SELECTED FILE'S OR FOLDER'S PATH !
+WE HAVE NECESSARY LIBRARIES TO IMPORT CAD FILES, SO WE USED THE IN OUR SAMPLE.
+YOU NEED TO CREATE YOUR OWN MECHANICS TO USE (IMPORT) THAT FILES !
 
 File Selection Sample Blueprint
 ![FileSelection](https://user-images.githubusercontent.com/10528447/201652963-b730b091-3be8-47e6-a534-33eb607d8880.jpg)
