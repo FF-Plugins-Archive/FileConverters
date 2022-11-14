@@ -35,6 +35,9 @@ public:
 	bool IsSuccessfull = false;
 
 	UPROPERTY(BlueprintReadOnly)
+	bool IsFolder = false;
+
+	UPROPERTY(BlueprintReadOnly)
 	TArray<FString> Strings;
 };
 

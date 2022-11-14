@@ -241,12 +241,13 @@ void UFileConvertersBPLibrary::SelectFileFromDialog(FDelegateOpenFile DelegateFi
                         FileOpenDialog->Release();
                         CoUninitialize();
 
-                        AsyncTask(ENamedThreads::GameThread, [Array_FilePaths, DelegateFileNames]()
+                        AsyncTask(ENamedThreads::GameThread, [DelegateFileNames, Array_FilePaths, bAllowFolderSelection]()
                             {
                                 if (Array_FilePaths.IsEmpty() == false)
                                 {
                                     FSelectedFiles SelectedFiles;
                                     SelectedFiles.IsSuccessfull = true;
+                                    SelectedFiles.IsFolder = bAllowFolderSelection;
                                     SelectedFiles.Strings = Array_FilePaths;
 
                                     DelegateFileNames.ExecuteIfBound(SelectedFiles);
@@ -256,6 +257,7 @@ void UFileConvertersBPLibrary::SelectFileFromDialog(FDelegateOpenFile DelegateFi
                                 {
                                     FSelectedFiles SelectedFiles;
                                     SelectedFiles.IsSuccessfull = false;
+                                    SelectedFiles.IsFolder = bAllowFolderSelection;
 
                                     DelegateFileNames.ExecuteIfBound(SelectedFiles);
                                 }
@@ -267,13 +269,14 @@ void UFileConvertersBPLibrary::SelectFileFromDialog(FDelegateOpenFile DelegateFi
                     // Function couldn't get results.
                     else
                     {
-                        AsyncTask(ENamedThreads::GameThread, [DelegateFileNames, ShellItems, FileOpenDialog]()
+                        AsyncTask(ENamedThreads::GameThread, [DelegateFileNames, ShellItems, FileOpenDialog, bAllowFolderSelection]()
                             {
                                 FileOpenDialog->Release();
                                 CoUninitialize();
                                 
                                 FSelectedFiles SelectedFiles;
                                 SelectedFiles.IsSuccessfull = false;
+                                SelectedFiles.IsFolder = bAllowFolderSelection;
 
                                 DelegateFileNames.ExecuteIfBound(SelectedFiles);
                             }
@@ -284,13 +287,14 @@ void UFileConvertersBPLibrary::SelectFileFromDialog(FDelegateOpenFile DelegateFi
                 // Dialog didn't show up.
                 else
                 {
-                    AsyncTask(ENamedThreads::GameThread, [DelegateFileNames, FileOpenDialog, ShellItems]()
+                    AsyncTask(ENamedThreads::GameThread, [DelegateFileNames, FileOpenDialog, ShellItems, bAllowFolderSelection]()
                         {
                             FileOpenDialog->Release();
                             CoUninitialize();
                             
                             FSelectedFiles SelectedFiles;
                             SelectedFiles.IsSuccessfull = false;
+                            SelectedFiles.IsFolder = bAllowFolderSelection;
 
                             DelegateFileNames.ExecuteIfBound(SelectedFiles);
                         }
@@ -301,13 +305,14 @@ void UFileConvertersBPLibrary::SelectFileFromDialog(FDelegateOpenFile DelegateFi
             // Function couldn't create dialog.
             else
             {
-                AsyncTask(ENamedThreads::GameThread, [DelegateFileNames, FileOpenDialog, ShellItems]()
+                AsyncTask(ENamedThreads::GameThread, [DelegateFileNames, FileOpenDialog, ShellItems, bAllowFolderSelection]()
                     {
                         FileOpenDialog->Release();
                         CoUninitialize();
                         
                         FSelectedFiles SelectedFiles;
                         SelectedFiles.IsSuccessfull = false;
+                        SelectedFiles.IsFolder = bAllowFolderSelection;
 
                         DelegateFileNames.ExecuteIfBound(SelectedFiles);
                     }
