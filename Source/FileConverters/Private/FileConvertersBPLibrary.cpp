@@ -27,7 +27,7 @@ void UFileConvertersBPLibrary::LoadAdditionalAssetString(const FString AssetRela
 
 void UFileConvertersBPLibrary::LoadAdditionalAssetBytes(const FString AssetRelativePath, TArray<uint8>& OutAssetBytes)
 {
-    const FString AssetPathCoocked = FPaths::ProjectContentDir() + AssetRelativePath;
+    const FString AssetPathCoocked = FPaths::ProjectSavedDir() + AssetRelativePath;
     FFileHelper::LoadFileToArray(OutAssetBytes, *AssetPathCoocked);
 }
 
