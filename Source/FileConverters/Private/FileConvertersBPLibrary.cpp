@@ -7,11 +7,14 @@
 #include "Builders/GLTFBuilder.h"
 #include "UserData/GLTFMaterialUserData.h"
 #include "GenericPlatform/GenericPlatformMisc.h"
-//#include "Kismet/KismetStringLibrary.h"
+#include "HAL/FileManager.h"
+#include "HAL/FileManagerGeneric.h"
 
 // Windows Includes.
+THIRD_PARTY_INCLUDES_START
 #define WIN32_LEAN_AND_MEAN
 #include "shobjidl_core.h"
+THIRD_PARTY_INCLUDES_END
 
 UFileConvertersBPLibrary::UFileConvertersBPLibrary(const FObjectInitializer& ObjectInitializer)
 : Super(ObjectInitializer)
@@ -441,6 +444,142 @@ void UFileConvertersBPLibrary::SaveFileDialog(FDelegateSaveFile DelegateSaveFile
                     }
                 );
             }
+        }
+    );
+}
+
+bool UFileConvertersBPLibrary::GetFolderContents(TArray<FFolderContent>& OutContents, FString& ErrorCode, FString InPath)
+{
+    if (InPath.IsEmpty() == true)
+    {
+        ErrorCode = "Path is empty.";
+        return false;
+    }
+
+    if (FPaths::DirectoryExists(InPath) == false)
+    {
+        ErrorCode = "Directory doesn't exist.";
+        return false;
+    }
+    
+    class FFindDirectories : public IPlatformFile::FDirectoryVisitor
+    {
+    public:
+        
+        TArray<FFolderContent> Array_Contents;
+        
+        FFindDirectories() {}
+        virtual bool Visit(const TCHAR* CharPath, bool bIsDirectory) override
+        {
+            if (bIsDirectory == true)
+            {
+                FFolderContent EachContent;
+                
+                FString Path = FString(CharPath) + "/";
+                FPaths::NormalizeDirectoryName(Path);
+                
+                EachContent.Path = Path;
+                EachContent.Name = FPaths::GetBaseFilename(Path);
+                EachContent.bIsFile = false;
+                
+                Array_Contents.Add(EachContent);
+            }
+
+            else if (bIsDirectory == false)
+            {
+                FFolderContent EachContent;
+                
+                EachContent.Path = CharPath;
+                EachContent.Name = FPaths::GetCleanFilename(CharPath);
+                EachContent.bIsFile = true;
+
+                Array_Contents.Add(EachContent);
+            }
+
+            return true;
+        }
+    };
+
+    FFindDirectories GetFoldersVisitor;
+    FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*InPath, GetFoldersVisitor);
+    
+    OutContents = GetFoldersVisitor.Array_Contents;
+
+    return true;
+}
+
+void UFileConvertersBPLibrary::SearchInFolder(FDelegateSearch DelegateSearch, FString InPath, FString InSearch, bool bSearchExact)
+{
+    if (InPath.IsEmpty() == true)
+    {
+        FContentArrayContainer EmptyContainer;
+        DelegateSearch.Execute(false, "Path is empty.", EmptyContainer);
+        
+        return;
+    }
+
+    if (InSearch.IsEmpty() == true)
+    {
+        FContentArrayContainer EmptyContainer;
+        DelegateSearch.Execute(false, "Search is empty.", EmptyContainer);
+        
+        return;
+    }
+
+    if (FPaths::DirectoryExists(InPath) == false)
+    {
+        FContentArrayContainer EmptyContainer;
+        DelegateSearch.Execute(false, "Directory doesn't exist.", EmptyContainer);
+        
+        return;
+    }
+
+    AsyncTask(ENamedThreads::AnyNormalThreadNormalTask, [DelegateSearch, InPath, InSearch, bSearchExact]()
+        {
+            IFileManager& FileManager = FFileManagerGeneric::Get();
+
+            TArray<FString> Array_Contents;
+            TArray<FFolderContent> Array_Founds;
+            
+            FileManager.FindFilesRecursive(Array_Contents, *InPath, TEXT("*"), true, true, false);
+
+            for (int32 ContentIndex = 0; ContentIndex < Array_Contents.Num(); ContentIndex++)
+            {
+                FFolderContent EachContent;
+
+                if (bSearchExact == true)
+                {
+                    if (FPaths::GetBaseFilename(Array_Contents[ContentIndex]) == InSearch)
+                    {
+                        EachContent.Name = FPaths::GetCleanFilename(Array_Contents[ContentIndex]);
+                        EachContent.Path = Array_Contents[ContentIndex];
+                        EachContent.bIsFile = FPaths::FileExists(Array_Contents[ContentIndex]);
+
+                        Array_Founds.Add(EachContent);
+                    }
+                }
+
+                else
+                {
+                    if (FPaths::GetBaseFilename(Array_Contents[ContentIndex]).Contains(InSearch) == true)
+                    {
+                        EachContent.Name = FPaths::GetCleanFilename(Array_Contents[ContentIndex]);
+                        EachContent.Path = Array_Contents[ContentIndex];
+                        EachContent.bIsFile = FPaths::FileExists(Array_Contents[ContentIndex]);
+
+                        Array_Founds.Add(EachContent);
+                    }
+                }
+            }
+
+            AsyncTask(ENamedThreads::GameThread, [DelegateSearch, Array_Founds]()
+                {
+                    FContentArrayContainer ArrayContainer;
+                    ArrayContainer.OutContents = Array_Founds;
+
+                    DelegateSearch.ExecuteIfBound(true, "Success", ArrayContainer);
+                }
+            );
         }
     );
 }

@@ -3,7 +3,7 @@
 #pragma once
 
 #include "Kismet/BlueprintFunctionLibrary.h"
-#include "Exporters/GLTFExporter.h"
+#include "Exporters/GLTFExporter.h"					// FDelegateGLTFExport -> Export Messages.
 #include "FileConvertersBPLibrary.generated.h"
 
 /* 
@@ -41,6 +41,34 @@ public:
 	TArray<FString> Strings;
 };
 
+USTRUCT(BlueprintType)
+struct FFolderContent
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(BlueprintReadOnly)
+	FString Path = "";
+
+	UPROPERTY(BlueprintReadOnly)
+	FString Name = "";
+
+	UPROPERTY(BlueprintReadOnly)
+	bool bIsFile = false;
+};
+
+USTRUCT(BlueprintType)
+struct FContentArrayContainer
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(BlueprintReadOnly)
+	TArray<FFolderContent> OutContents;
+};
+
 UDELEGATE(BlueprintAuthorityOnly)
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FDelegateGLTFExport, bool, bIsSuccessfull, FGLTFExportMessages, OutMessages);
 
@@ -49,6 +77,9 @@ DECLARE_DYNAMIC_DELEGATE_OneParam(FDelegateOpenFile, FSelectedFiles, OutFileName
 
 UDELEGATE(BlueprintAuthorityOnly)
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FDelegateSaveFile, bool, bIsSaveSuccessful, FString, OutFileName);
+
+UDELEGATE(BlueprintAuthorityOnly)
+DECLARE_DYNAMIC_DELEGATE_ThreeParams(FDelegateSearch, bool, bIsSearchSuccessful, FString, ErrorCode, FContentArrayContainer, Out);
 
 UCLASS()
 class UFileConvertersBPLibrary : public UBlueprintFunctionLibrary
@@ -75,5 +106,11 @@ class UFileConvertersBPLibrary : public UBlueprintFunctionLibrary
 
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Save File with Dialog", ToolTip = "Each extension group must have only one extension. \nIf that group has multiple variation, you should define one by one all of them if you need them. \nAlso you need to write them as \"*.extension\".", Keywords = "save, file, dialog, windows, explorer"), Category = "File Converters|File Dialog")
 	static void SaveFileDialog(FDelegateSaveFile DelegateSaveFile, const FString InDialogName, const FString InOkLabel, const FString InDefaultPath, TMap<FString, FString> InExtensions, int32 DefaultExtensionIndex, bool bIsNormalizeOutputs = true);
+
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Get Folder Contents", ToolTip = "Description.", Keywords = "explorer, load, file, folder, content"), Category = "File Converters|File Dialog")
+	static bool GetFolderContents(TArray<FFolderContent>& OutContents, FString& ErrorCode, FString InPath);
+
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Search In Folder", ToolTip = "Description.", Keywords = "explorer, load, file, folder, content"), Category = "File Converters|File Dialog")
+	static void SearchInFolder(FDelegateSearch DelegateSearch, FString InPath, FString InSearch, bool bSearchExact);
 
 };
