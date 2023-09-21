@@ -1,3 +1,9 @@
+# GLTF EXPORTER MOVED TO
+https://github.com/FF-Plugins-Active/MeshOperations
+
+# FILE DIALOGS MOVED TO
+https://github.com/FF-Plugins-Active/WindowSystem
+-----------------------------------------------------------------------------------------------------------
 # FileConverters
  
 **Target Platform:** Windows (both editor runtime and packaged runtime)<br>
